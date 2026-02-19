@@ -1,21 +1,20 @@
 # Doc-Expert Skill
 
-**Expert-Driven Enterprise Document Generation**
+**Input-Driven Enterprise Document Generation**
 
-Doc-Expert is a Claude Code skill that generates enterprise-ready draft documents with minimal user effort. It's designed for users who lack domain knowledge or don't know how to structure documents.
+Doc-Expert is a Claude Code skill that generates enterprise-ready draft documents by combining a document template, source materials, and an optional set of enterprise guidelines with a controlled section-by-section interview. Designed for PM, BA, and QA Lead roles who need structured first drafts with minimal cognitive load.
 
 ---
 
 ## When to Use Doc-Expert
 
-✅ **Use doc-expert when:**
-- You don't know how to write a specific document type
-- You lack domain expertise (QA, PM, BA, etc.)
-- You need a structured draft quickly with minimal back-and-forth
-- You want expert guidance without over-questioning
+**Use doc-expert when:**
+- You have a document template (with section guidelines) and source materials (PRD, BRD, feature specs)
+- You want the skill to extract structure from the template and populate it from your inputs
+- You need a structured first draft with minimal back-and-forth
 - You're starting from scratch (no previous document version)
 
-❌ **Don't use doc-expert when:**
+**Don't use doc-expert when:**
 - You have a previous document version to update → Use `/doc-revision` instead
 - You just need minor edits to existing content → Use regular editing
 - You want to write it yourself → Just write directly
@@ -30,106 +29,215 @@ Doc-Expert is a Claude Code skill that generates enterprise-ready draft document
 /doc-expert
 ```
 
-Then describe what you need. Example:
+Then provide your inputs using this format:
 
 ```
-Write a test plan for Feature X
-```
+Document type: [e.g., Test Strategy and Plan]
+Project/Feature name: [name]
+Scope summary: [1–3 sentences on what is being delivered]
+Known constraints or risks: [optional]
+Special instructions: [optional]
 
-### Advanced Usage (QA-Senior Mode)
-
-```
-Act as senior QA and write a test plan for Feature X
-```
-
-or
-
-```
-Use QA mode to write a test plan for Feature X
+Attached files:
+- [Template]: <filename>
+- [Requirements]: <filename>
+- [Guidelines]: <filename> (optional)
 ```
 
 ---
 
-## Operating Modes
+## Input Model
 
-### 1. Normal Mode (Default)
+### Required Inputs
 
-**Use for:** Any enterprise document (requirements, release plans, SOPs, architecture docs)
+| Input | Role | Example |
+|-------|------|---------|
+| **Document Template** | Defines output structure, section order, and per-section guidance | Test Strategy and Plan Template |
+| **Source Document(s)** | Provides domain content to populate sections | PRD, BRD, feature spec, user stories |
 
-**What it does:**
-- Asks 5 questions maximum
-- Uses safe defaults for missing information
-- Generates structured enterprise-ready document
-- Marks uncertain areas as "To Be Confirmed"
+### Optional Inputs
 
-**Example:**
+| Input | Role | Example |
+|-------|------|---------|
+| **Enterprise Guidelines** | Org-specific constraints, standards, or checklists | Test Guidelines, UAT Operating Guidelines, Definition of Done |
+| **User Prompt** | Scoping instructions, known constraints, emphasis | Focus on integration testing; UAT is critical |
+
+If you provide only a brief prompt with no files, the skill proceeds with a question-driven approach and will warn that output will rely heavily on your answers.
+
+---
+
+## High-Level Workflow
+
+Five phases:
+
 ```
-User: "Write a release plan for Project Phoenix"
-Claude: [Asks 5 questions about scope, timeline, stakeholders, risks, rollback]
-Claude: [Generates release plan with checklist, timeline, and rollback procedures]
+Phase 1: Input Analysis
+  Parse all inputs, build internal context model
+
+Phase 2: Template Structure Extraction
+  Extract sections, per-section guidelines, content shapes
+
+Phase 3: Build Plan & Confirmation
+  Present section tree with coverage assessment, confirm with user
+
+Phase 4: Section-by-Section Construction
+  Controlled interview per section, draft, confirm, proceed
+
+Phase 5: Assembly & Output
+  Combine, quality check, deliver Confluence-ready Markdown
 ```
 
 ---
 
-### 2. QA-Senior Mode
+## Step-by-Step Workflow
 
-**Trigger phrases:**
-- "Act as senior QA"
-- "Use QA mode"
-- "You are a senior QA"
+### Example Session: Test Strategy and Plan
 
-**Use for:** QA test plans, test strategies, QA analysis
-
-**What it does:**
-- Thinks like a 10+ year QA consultant
-- Prioritizes by risk (P0, P1, P2, P3)
-- Includes negative testing and edge cases
-- Considers regression impact
-- Adds performance, integration, and security scenarios
-- Provides coaching notes explaining QA thinking
-
-**QA-Senior Reasoning:**
-- ✅ Happy path covered
-- ✅ Negative path covered
-- ✅ Edge cases considered
-- ✅ Integration impact analyzed
-- ✅ Rollback scenario planned
-- ✅ Data state reset addressed
-- ✅ Regression scope defined
-
-**Example:**
+**Step 1: User Triggers Skill**
 ```
-User: "Act as senior QA and write a test plan for login feature with 2FA"
-Claude: [Asks 5 questions with QA focus]
-Claude: [Generates test plan with:]
-  - Risk-based prioritization
-  - Positive tests (valid login with 2FA)
-  - Negative tests (invalid credentials, expired 2FA, network timeout)
-  - Edge cases (first login, simultaneous logins, token race conditions)
-  - Performance SLA validation
-  - Regression coverage
+User: "Generate a test strategy and plan for Project Lumi"
+
+Attached:
+- [Template]: Test_Strategy_Plan_Template.docx
+- [Requirements]: Lumi_Virtual_Connect_PRD.pdf
+- [Guidelines]: Enterprise_Test_Guidelines.pdf
+```
+
+**Step 2: Doc-Expert Analyzes Inputs**
+```
+Claude: [Parses template → extracts section tree]
+Claude: [Parses PRD → builds context model]
+Claude: [Parses guidelines → registers constraints]
+```
+
+**Step 3: Build Plan Presented**
+```
+Claude: "Here is the section structure I extracted from your template:"
+
+1. Introduction ✅ Strong coverage from PRD
+2. Scope ✅ Strong coverage from PRD
+3. Test Approach ⚠️ Partial — will need 2 questions
+4. Test Cases ❓ No coverage — will need user input
+5. Entry / Exit Criteria ⚠️ Partial — will use defaults + confirm
+6. Assumptions & Risks ✅ Extracted from PRD risks section
+
+"Does this structure look correct? Any sections to add, remove, or skip?"
+```
+
+**Step 4: Section-by-Section Construction**
+```
+Claude: "Working on Section 3 — Test Approach"
+[Shows what was extracted] [Shows template guideline]
+[Presents draft with gaps marked [TBC]]
+[Asks 1–3 targeted questions about gaps only]
+User: [Answers or says "use defaults"]
+Claude: [Finalizes section, moves to next]
+```
+
+**Step 5: Assembly & Delivery**
+```
+Claude: [Assembles full document]
+Claude: [Quality check: all sections present, no orphan [TBC], guidelines applied]
+Claude: [Delivers complete Confluence-ready Markdown]
+Claude: "This document is a DRAFT and requires review before approval."
+Claude: [Lists any [TBC] items needing resolution]
+```
+
+**Step 6: Optional — Word Export**
+```
+User: "Give me a Word version"
+Claude: [Uses docx skill to export]
 ```
 
 ---
 
-## Core Principles
+## Phase Details
 
-### 1. Minimal Questioning (Max 5 Questions)
-Doc-expert asks only essential information. It won't over-question you.
+### Phase 1 — Input Analysis
 
-**Minimum Information Contract:**
-1. What is being delivered? (feature/system/process)
-2. What changed?
-3. Who is affected? (users/system/internal)
-4. Target release timeline?
-5. Any known constraints or risks?
+- PDFs parsed via `pdf` skill; Word files via `docx` skill; Markdown read directly
+- Extracts from template: section tree, per-section guidance, expected content shape
+- Extracts from source docs: features, requirements, user stories, acceptance criteria, system components, integrations, actors
+- Extracts from enterprise guidelines: constraints, standards, mandatory inclusions
+- Internally classifies coverage per section: **strong / partial / none** (not shown to user as a raw list — used to calibrate question density)
 
-**If you don't know:** Just say "TBD" or "I don't know" - doc-expert will use safe defaults.
+### Phase 2 — Template Structure Extraction
+
+- Builds section hierarchy (1 / 1.1 / 1.1.1)
+- Detects content shape per section: paragraph / table / list / hybrid
+- Extracts per-section guidance text from the template itself
+
+### Phase 3 — Build Plan & Confirmation
+
+Presents to user:
+1. Extracted section tree (numbered, with titles)
+2. Coverage per section: ✅ Strong / ⚠️ Partial / ❓ None
+3. Enterprise guidelines detected and how they will be applied
+
+Asks at most **3 questions** in this phase:
+- Does the section structure look correct?
+- Any sections to skip or deprioritize?
+- Any additional context before we begin?
+
+### Phase 4 — Section-by-Section Construction
+
+For each section:
+- States which section is being worked
+- Shows extracted content relevant to the section
+- Shows the template's guideline for the section (brief summary)
+- **Strong coverage** → presents draft, asks to confirm or adjust
+- **Partial coverage** → presents draft with [TBC] gaps, asks targeted questions about gaps only
+- **No coverage** → asks focused questions, then drafts
+
+**Question rules:**
+- **1–3 questions per turn** — aim for 1 where possible
+- Never ask about metadata (status, approvers, version, dates)
+- Never ask obvious questions answerable from the provided inputs
+- Always prefer showing a draft and letting the user react
+- If user says "just do it" / "use defaults" → switch to aggressive-default mode, draft all remaining sections with safe defaults, present for bulk review
+
+**Large table sections (e.g., test cases, RACI):**
+- Draft 3–5 rows at a time, present for review, iterate
+- Never generate an entire large table in one shot
+
+### Phase 5 — Assembly & Output
+
+Quality check before delivery:
+- All template sections present (or explicitly skipped)
+- No orphan [TBC] markers without explanation
+- Enterprise guideline requirements addressed
+- Tables consistently formatted
+- Heading hierarchy correct
+- Cross-references between sections valid
+
+Domain-specific checks:
+
+| Document Type | Additional Checks |
+|---------------|-------------------|
+| Test Strategy/Plan | Happy path? Negative paths? Edge cases? Integration impact? Entry/exit criteria? Regression scope? |
+| Requirements Doc | Acceptance criteria? Requirements uniquely identifiable? Traceability possible? |
+| Release Plan | Rollback plan? Dependency list complete? |
 
 ---
 
-### 2. Safe Defaults
-Doc-expert never blocks on missing information. It applies industry-standard defaults:
+## Output Format
+
+All doc-expert documents are **Confluence-ready Markdown**:
+
+- Proper heading hierarchy (## / ### / ####)
+- Clean pipe-delimited tables
+- Numbered and bulleted lists where appropriate
+- Bold for emphasis per template conventions
+- No raw formatting artifacts
+- Copy-paste ready for Confluence
+- **DRAFT status** prominently stated
+- All uncertain content marked **[TBC — Default Applied]** with rationale
+
+---
+
+## Safe Defaults
+
+Doc-expert never blocks on missing information:
 
 | Missing Info | Default Value |
 |--------------|---------------|
@@ -141,256 +249,84 @@ Doc-expert never blocks on missing information. It applies industry-standard def
 | Entry criteria | Build stable, major defects closed |
 | Exit criteria | No critical defects, acceptable minor defects |
 
----
-
-### 3. No Metadata Questions
-Doc-expert **never** asks about:
-- Document status (always DRAFT)
-- Approvers (leaves blank)
-- Review cycle
-- Version number (defaults to 1.0)
-- Document owner
-
-These are auto-filled with safe defaults.
+Defaults are marked **[TBC — Default Applied]** so reviewers can identify them.
 
 ---
 
-## Document Types Recognized
+## Metadata Handling
 
-Doc-expert automatically recognizes common enterprise document types:
+Doc-expert **never asks** about document metadata:
 
-| Type | Keywords | Structure |
-|------|----------|-----------|
-| **Test Plan** | "test", "QA", "testing", "quality" | Scope, Approach, Test Cases, Entry/Exit Criteria |
-| **Requirements** | "requirements", "BRD", "PRD", "functional" | Overview, Requirements Matrix, Acceptance Criteria |
-| **Release Plan** | "release", "deployment", "go-live" | Timeline, Checklist, Rollback Plan |
-| **Architecture** | "architecture", "design", "technical" | System Overview, Components, Data Flow |
-| **SOP** | "procedure", "process", "how-to" | Purpose, Steps, Roles, Exceptions |
-
-If type is ambiguous, doc-expert asks once. If still unclear, defaults to generic structured document.
-
----
-
-## Step-by-Step Workflow
-
-### Example Session: Test Plan for Chatbot Feature
-
-**Step 1: User Triggers Skill**
-```
-User: "Act as senior QA and write a test plan for Lumi Virtual Connect chatbot"
-```
-
-**Step 2: Doc-Expert Asks 5 Questions**
-```
-Claude: "Before I generate your test plan, I need 5 clarifications:"
-
-1. Is this a new feature or enhancement?
-2. What's the target release date?
-3. What platform does this integrate with?
-4. How many concurrent users expected?
-5. Any performance requirements?
-```
-
-**Step 3: User Provides Answers**
-```
-User:
-1. New feature
-2. Feb 14-27
-3. TBD
-4. 5 agents
-5. 3-second response time
-```
-
-**Step 4: Doc-Expert Generates Document**
-```
-Claude: [Generates complete test plan with:]
-- Document metadata (DRAFT, v1.0, dates)
-- Executive summary
-- Scope (in/out)
-- Risk-based test approach (P0/P1/P2/P3)
-- 14 test cases (happy path, negative, edge cases)
-- Entry/exit criteria
-- Assumptions
-- Risks & mitigation
-- Test schedule
-- Open questions
-```
-
-**Step 5: Optional - Confluence Export**
-```
-User: "Give me a Confluence-ready version"
-Claude: [Creates .md file with Confluence markup]
-```
+| Field | Strategy |
+|-------|----------|
+| Status | Always **"DRAFT"** |
+| Version | **1.0** (or extracted from user prompt) |
+| Author | Leave blank or extract from user prompt |
+| Approvers / Reviewers | Leave blank |
+| Last Modified | Current date |
+| Next Review Date | Leave blank |
 
 ---
 
-## Output Format
+## Error Handling
 
-All doc-expert documents include:
-
-✅ **Clear headings** (H2/H3 hierarchy)
-✅ **Structured sections** (logical flow)
-✅ **Enterprise tone** (professional, concise)
-✅ **Confluence-ready formatting** (tables, lists, headings)
-✅ **Explicit "Assumptions" section**
-✅ **Explicit "Risks" section**
-✅ **Explicit "Open Questions" section** (if any)
-✅ **DRAFT status** prominently displayed
-
----
-
-## Real-World Examples
-
-### Example 1: Test Plan (QA-Senior Mode)
-
-**Input:**
-```
-Act as senior QA. Write a test plan for Lumi Virtual Connect chatbot with:
-- Real-time agent support
-- AI suggestions for responses
-- KB article recommendations
-- 3-second SLA
-```
-
-**Output:**
-- 14 test cases (4 P0 critical, 3 P1 high, 5 P2 medium, 2 P3 low)
-- Risk-based prioritization
-- Negative testing (invalid queries, network latency, session timeouts)
-- Performance validation (5 concurrent agents, 3-second SLA)
-- Entry/exit criteria with clear gates
-- 2-week test schedule
-
-**See:** `doc-expert-session-transcript-lumi-test-plan.md` for full example
-
----
-
-### Example 2: Requirements Document (Normal Mode)
-
-**Input:**
-```
-Write a requirements document for password reset feature
-```
-
-**Questions Asked:**
-1. Current system behavior?
-2. Target users (internal/external)?
-3. Security requirements?
-4. Timeline?
-5. Known constraints?
-
-**Output:**
-- Functional requirements matrix
-- Non-functional requirements (security, performance)
-- User stories with acceptance criteria
-- Edge cases and error handling
-- Dependencies and assumptions
-
----
-
-### Example 3: Release Plan
-
-**Input:**
-```
-Write a release plan for v2.0 of our mobile app
-```
-
-**Questions Asked:**
-1. What's new in v2.0?
-2. Release date?
-3. Platform (iOS/Android/both)?
-4. Phased rollout or all-at-once?
-5. Rollback triggers?
-
-**Output:**
-- Release timeline (pre-release, release, post-release)
-- Deployment checklist (30+ items)
-- Rollback procedures
-- Communication plan
-- Success metrics
-
----
-
-## Coaching Features (QA-Senior Mode)
-
-When using QA-Senior Mode, doc-expert includes coaching notes to help you learn:
-
-**Example Coaching Notes:**
-```
-> **Coaching Note:** As a senior QA, I organize testing by risk level.
-  High-risk items get tested first and most thoroughly.
-
-> **Coaching Note:** These MUST pass for release. If any fail, nothing
-  else matters.
-
-> **Coaching Note:** Senior QAs always test how systems FAIL, not just
-  how they succeed.
-
-> **Coaching Note:** Don't start testing until these are met - otherwise
-  you'll waste time on incomplete builds.
-```
-
-Plus a **Coaching Summary** section at the end explaining:
-- Key QA principles applied
-- What to do next
-- Questions to ask your team
-- Common pitfalls to avoid
+| Situation | Response |
+|-----------|----------|
+| No template provided | Ask user to provide one, or offer to use a generic structure for the document type |
+| No source documents | Warn that output will rely heavily on user interview; proceed with question-driven approach |
+| Template has no section guidelines | Infer section purpose from title and position; proceed with best-effort |
+| Source documents contradict each other | Flag contradiction, ask for resolution before drafting affected section |
+| Enterprise guideline conflicts with template | Present conflict, ask user which takes precedence |
+| User wants to skip all questions | Switch to full-default mode, generate complete draft, present for bulk review with all [TBC] gaps marked |
 
 ---
 
 ## Tips for Best Results
 
-### 1. Provide Context Upfront
-**Good:**
+### 1. Provide a Template with Embedded Guidelines
+
+The richer your template's per-section instructions, the less the skill needs to ask.
+
+**Better template section header:**
 ```
-Write a test plan for Lumi chatbot that provides real-time agent support
-with AI suggestions. Expected benefits: faster response times, reduced
-cognitive load, better compliance.
+## 3. Test Approach
+Describe the overall testing strategy. Include: test levels (unit, integration, UAT),
+test types (functional, performance, security), tooling, and responsibilities by role.
 ```
 
-**Less Effective:**
+**Minimal template section header:**
 ```
-Write a test plan
+## 3. Test Approach
 ```
+
+Both work — but the first reduces questions significantly.
 
 ---
 
-### 2. Use Trigger Phrases for Specialized Modes
+### 2. Provide Source Documents
 
-**For QA documents:**
-```
-"Act as senior QA"
-"Use QA mode"
-```
-
-**For other domains (future modes):**
-```
-"Act as senior BA"
-"Use architecture mode"
-```
+The skill extracts content from your PRDs, BRDs, and specs. The more you provide, the fewer questions you'll be asked.
 
 ---
 
-### 3. Answer "TBD" When You Don't Know
+### 3. Say "Use Defaults" to Speed Up
 
-**Example:**
+If you're in a hurry:
 ```
-Claude: "What platform does this integrate with?"
-User: "TBD"
-Claude: [Uses safe default and marks as risk]
+User: "Just use defaults for everything"
 ```
 
-Don't block on unknowns - doc-expert handles them gracefully.
+Doc-expert switches to aggressive-default mode: drafts all remaining sections with safe defaults, marks gaps [TBC], and delivers for bulk review.
 
 ---
 
-### 4. Request Confluence Export
+### 4. Request Word or PDF Export
 
 After generation:
 ```
-User: "Give me a Confluence-ready version"
+User: "Give me a Word version"   → uses docx skill
+User: "Export as PDF"            → uses pdf skill
 ```
-
-Doc-expert creates a `.md` file with Confluence markup for easy copy-paste.
 
 ---
 
@@ -398,27 +334,24 @@ Doc-expert creates a `.md` file with Confluence markup for easy copy-paste.
 
 | Aspect | Doc-Expert | Doc-Revision |
 |--------|-----------|--------------|
-| **User Knowledge** | User doesn't know how to write | User has previous version |
-| **Input** | Minimal info (5 questions) | Previous document (PDF/Word) |
-| **Approach** | Expert-driven generation | Template-driven update |
-| **Questions** | 5 questions max per turn | 3-5 questions per turn |
-| **Metadata** | Auto-fills all metadata | Inherits/auto-increments |
-| **Output** | Draft from scratch | Updated version |
-| **Special Modes** | QA-Senior Mode | Document Type Profiles |
+| **User Knowledge** | Has template + source docs | Has previous version of the document |
+| **Input** | Template + source docs + optional guidelines | Previous document (PDF/Word) |
+| **Approach** | Input-driven, template-aware generation | Template-learned update from previous version |
+| **Questions** | 1–3 per section turn; max 3 in plan phase | 3–5 questions per turn |
+| **Metadata** | Auto-fills all metadata | Inherits/auto-increments from previous version |
+| **Output** | First draft from inputs | Updated version |
 
-**Use doc-expert when:** User needs help writing from scratch
-**Use doc-revision when:** User has a previous version to update
+**Use doc-expert when:** You have a template and source materials and need a first draft
+**Use doc-revision when:** You have a previous version and want to update it
 
 ---
 
 ## Integration with Other Skills
 
-Doc-expert can integrate with:
-
-- **content-research-writer** - For section-by-section refinement
-- **pdf** skill - For parsing reference documents
-- **docx** skill - For Word export
-- **markdown-tools** - For document conversion
+| Skill | When Used |
+|-------|-----------|
+| `pdf` | Parsing PDF inputs (requirements, guidelines, templates) |
+| `docx` | Parsing Word inputs; generating Word export if requested |
 
 ---
 
@@ -442,92 +375,86 @@ Located in your current working directory.
 ## Troubleshooting
 
 ### "Doc-expert is asking too many questions"
-**Issue:** More than 5 questions asked
-**Fix:** This shouldn't happen. If it does, remind doc-expert: "Keep it to 5 questions max"
-
-### "I don't understand the technical terms"
-**Issue:** Document too complex
-**Fix:** Use QA-Senior Mode with coaching notes enabled, or ask: "Explain this in simpler terms"
+**Issue:** More questions than expected per section
+**Fix:** Provide a richer template with embedded section guidelines, and more complete source documents. Or say "use defaults" to skip remaining questions.
 
 ### "The document is missing critical sections"
 **Issue:** Important content omitted
-**Fix:** Tell doc-expert: "Add section on [X]" and it will regenerate
+**Fix:** Tell doc-expert: "Add section on [X]" and it will regenerate. Or check that your template includes the section — the skill only generates sections present in the template.
+
+### "I don't have a template"
+**Fix:** Tell doc-expert what document type you need. It will offer to use a generic structure for that type and proceed with a question-driven approach.
 
 ### "I need to customize the output format"
-**Issue:** Confluence format not suitable
 **Fix:** Request: "Export as Word document" (uses docx skill) or "Export as PDF" (uses pdf skill)
 
 ---
 
 ## Version History
 
-**Current Version:** v1.0
+**Current Version:** v2.0
+
+**v2.0 (2026-02-19):**
+- Complete redesign from knowledge-driven to input-driven generation
+- Template-aware: extracts structure and per-section guidelines from provided template
+- Source document cross-referencing for content population
+- Enterprise guideline integration as constraints layer
+- Controlled section-by-section interview (1–3 questions per turn)
+- Coverage assessment (strong / partial / none) drives question density
+- Row-level mode for large table sections
+- Aggressive-default mode for impatient users
+- Domain-specific quality checks applied contextually
+- Confluence-ready Markdown output
 
 **v1.0 (2026-02-13):**
-- Initial release
+- Initial release with knowledge-driven defaults
 - Normal mode + QA-Senior mode
-- Minimal questioning strategy (max 5 questions)
-- Safe defaults for all metadata
-- QA quality checks and reasoning patterns
-- Coaching features for learning
-
----
-
-## Contributing
-
-To improve doc-expert:
-
-1. **Add new document types** - Edit SKILL.md document type recognition table
-2. **Add new specialized modes** - Follow QA-Senior Mode pattern
-3. **Improve defaults** - Update safe defaults based on enterprise standards
-4. **Add coaching features** - Enhance teaching/learning aspects
+- Minimal questioning strategy (max 5 questions total)
 
 ---
 
 ## Support & Examples
 
-**Full Session Example:**
-- See `doc-expert-session-transcript-lumi-test-plan.md` for complete workflow
-
-**Test Document Generated:**
-- See `Lumi_Virtual_Connect_Test_Plan_v1.0.md` for output example
-
 **Skill Definition:**
-- See `.claude/skills/doc-expert/SKILL.md` for complete skill specification
+- See `skills/doc-expert/SKILL.md` for complete skill specification
 
 ---
 
 ## Quick Reference Card
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ DOC-EXPERT SKILL QUICK REFERENCE                        │
-├─────────────────────────────────────────────────────────┤
-│ BASIC USAGE:                                            │
-│   /doc-expert                                           │
-│   "Write a [document type] for [feature/system]"       │
-│                                                         │
-│ QA-SENIOR MODE:                                         │
-│   "Act as senior QA and write a test plan for X"       │
-│                                                         │
-│ MAX QUESTIONS: 5                                        │
-│                                                         │
-│ SAFE DEFAULTS:                                          │
-│   - Status: DRAFT                                       │
-│   - Version: 1.0                                        │
-│   - Risk: Medium                                        │
-│                                                         │
-│ OUTPUTS:                                                │
-│   - Structured enterprise document                      │
-│   - Confluence-ready markdown                           │
-│   - Coaching notes (QA mode)                            │
-│                                                         │
-│ DON'T USE WHEN:                                         │
-│   - You have a previous version → use /doc-revision     │
-│   - Just need minor edits → edit directly               │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ DOC-EXPERT SKILL QUICK REFERENCE (v2.0)                     │
+├─────────────────────────────────────────────────────────────┤
+│ REQUIRED INPUTS:                                            │
+│   - Document template (with section guidelines)             │
+│   - Source document(s) (PRD, BRD, specs)                   │
+│   - Enterprise guidelines (optional)                        │
+│                                                             │
+│ WORKFLOW:                                                   │
+│   Phase 1: Parse inputs                                     │
+│   Phase 2: Extract template structure                       │
+│   Phase 3: Present plan → confirm (max 3 questions)        │
+│   Phase 4: Build section by section (1–3 q/turn)           │
+│   Phase 5: Assemble → quality check → deliver              │
+│                                                             │
+│ SAFE DEFAULTS:                                              │
+│   - Status: DRAFT                                           │
+│   - Version: 1.0                                            │
+│   - Risk: Medium                                            │
+│   - Gaps marked: [TBC — Default Applied]                   │
+│                                                             │
+│ OUTPUTS:                                                    │
+│   - Confluence-ready Markdown                               │
+│   - Word export (via docx skill)                            │
+│   - PDF export (via pdf skill)                              │
+│                                                             │
+│ DON'T USE WHEN:                                             │
+│   - You have a previous version → use /doc-revision        │
+│   - Just need minor edits → edit directly                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-**Ready to generate enterprise documents with minimal effort? Try `/doc-expert` now!** 🚀
+**Ready to generate enterprise documents from your inputs? Try `/doc-expert` now.**
